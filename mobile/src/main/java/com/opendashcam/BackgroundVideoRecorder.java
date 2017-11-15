@@ -10,12 +10,15 @@ import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.preference.PreferenceManager;
+import android.provider.MediaStore;
+import android.support.v4.content.LocalBroadcastManager;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.Gravity;
@@ -37,6 +40,8 @@ import java.util.concurrent.TimeUnit;
  * Parts contributed by Toshio Azuma
  */
 public class BackgroundVideoRecorder extends Service implements SurfaceHolder.Callback {
+    public static final String ACTION_NEW_RECORDING_AVAILABLE = "ACTION_NEW_RECORDING_AVAILABLE";
+    public static final String EXTRA_RECORDING = "recording";
     private WindowManager windowManager;
     private SurfaceView surfaceView;
     private volatile Camera camera = null;
@@ -48,9 +53,30 @@ public class BackgroundVideoRecorder extends Service implements SurfaceHolder.Ca
     private SharedPreferences settings;
     private SharedPreferences.Editor editor;
     private Handler mainThread = new Handler(Looper.getMainLooper());
+    private MediaScannerConnection mediaScannerConnection = new MediaScannerConnection(this, new MediaScannerConnection.MediaScannerConnectionClient() {
+        @Override
+        public void onMediaScannerConnected() {
+        }
+
+        @Override
+        public void onScanCompleted(String path, final Uri uri) {
+            if (null == uri) {
+                return;
+            }
+            backgroundThread.post(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(ACTION_NEW_RECORDING_AVAILABLE);
+                    intent.putExtra(EXTRA_RECORDING, new Recording(getApplicationContext(), Integer.parseInt(uri.getLastPathSegment()), currentVideoFile));
+                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+                }
+            });
+        }
+    });
 
     @Override
     public void onCreate() {
+        mediaScannerConnection.connect();
         //long startTime = System.currentTimeMillis();
         thread = new HandlerThread("io_processor_thread");
         thread.start();
@@ -170,8 +196,7 @@ public class BackgroundVideoRecorder extends Service implements SurfaceHolder.Ca
                         camera = null;
                     }
                     // Let MediaStore Content Provider know about the new file
-                    sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(currentVideoFile))));
-
+                    mediaScannerConnection.scanFile(currentVideoFile, null);
                     surfaceCreated(surfaceHolder);
                 }
             }
@@ -204,7 +229,11 @@ public class BackgroundVideoRecorder extends Service implements SurfaceHolder.Ca
                 mainThread = null;
 
                 // Let MediaStore Content Provider know about the new file
-                sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(new File(currentVideoFile))));
+                mediaScannerConnection.scanFile(currentVideoFile, null);
+                if (mediaScannerConnection.isConnected()) {
+                    mediaScannerConnection.disconnect();
+                }
+                mediaScannerConnection = null;
 
 
                 reEnableSound();

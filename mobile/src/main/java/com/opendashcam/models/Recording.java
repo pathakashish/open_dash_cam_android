@@ -14,6 +14,7 @@ import com.opendashcam.DBContract;
 import com.opendashcam.DBHelper;
 
 import java.io.File;
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -21,7 +22,7 @@ import java.util.Date;
  * Model class for video recording
  */
 
-public class Recording {
+public class Recording implements Serializable {
     public static final String ACTION_DATA_LOADED = "recording_data_loaded";
     private String id;
     private String filePath;

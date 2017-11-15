@@ -17,6 +17,7 @@ import com.opendashcam.models.Recording;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Adapter to display video recordings in ViewRecordingsActivity.
@@ -28,16 +29,25 @@ public class ViewRecordingsRecyclerViewAdapter extends RecyclerView
         .RecordingHolder> {
 
     private static String LOG_TAG = "ViewRecordingsRecycl...";
-    private ArrayList<Recording> recordings;
+    private final List<Recording> recordings = new ArrayList<>();
     private static RecordingClickListener recordingClickListener;
     private Context context;
     private int width, height;
 
-    public ViewRecordingsRecyclerViewAdapter(Context appContext, ArrayList<Recording> myDataset) {
-        recordings = myDataset;
+    public ViewRecordingsRecyclerViewAdapter(Context appContext) {
         context = appContext;
         width = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 150, context.getResources().getDisplayMetrics());
         height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, context.getResources().getDisplayMetrics());
+    }
+
+    public void updateRecordings(List<Recording> recordings) {
+        this.recordings.clear();
+        this.recordings.addAll(recordings);
+        notifyDataSetChanged();
+    }
+
+    public Recording getItem(int position) {
+        return recordings.get(position);
     }
 
     public static class RecordingHolder extends RecyclerView.ViewHolder

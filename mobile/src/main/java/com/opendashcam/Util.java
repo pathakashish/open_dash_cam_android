@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.os.Environment;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -16,6 +17,7 @@ import java.io.File;
  */
 
 public final class Util {
+    public static final String ACTION_CLEAR_RECORDINGS = "ACTION_CLEAR_RECORDINGS";
     private static String VIDEOS_DIRECTORY_NAME = "OpenDashCam";
     private static String VIDEOS_DIRECTORY_PATH = Environment.getExternalStorageDirectory()+"/"+VIDEOS_DIRECTORY_NAME+"/";
     private static int QUOTA = 750; // megabytes
@@ -122,6 +124,7 @@ public final class Util {
             context.getApplicationContext().sendBroadcast(
                     new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(fileInDirectory))
             );
+            LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ACTION_CLEAR_RECORDINGS));
         }
     }
 }

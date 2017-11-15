@@ -9,6 +9,31 @@
         android:id="@+id/my_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scrollbars="vertical"/>
+        android:scrollbars="vertical" />
+
+    <LinearLayout
+        android:id="@+id/emptyview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:paddingBottom="@dimen/margin_from_center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/no_videos"
+            android:textColor="@android:color/black"
+            android:textSize="@dimen/error_title_text_size" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/horizontal_widget_distance"
+            android:gravity="center"
+            android:text="@string/no_videos_message"
+            android:textSize="@dimen/error_message_text_size" />
+    </LinearLayout>
 
 </RelativeLayout>

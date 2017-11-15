@@ -2,6 +2,8 @@ package com.opendashcam;
 
 import android.app.Application;
 
+import com.opendashcam.models.RecordingsManager;
+import com.opendashcam.utils.IoThread;
 import com.squareup.picasso.Picasso;
 
 /**
@@ -20,5 +22,8 @@ public class OpenDashApp extends Application {
         Picasso.Builder picassoBuilder = new Picasso.Builder(this);
         picassoBuilder.addRequestHandler(new VideoRequestHandler(this));
         Picasso.setSingletonInstance(picassoBuilder.build());
+        IoThread.start();
+        RecordingsManager.sharedInstance().init(this);
+        RecordingsManager.sharedInstance().startLoadInBackground();
     }
 }

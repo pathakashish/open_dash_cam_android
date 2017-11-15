@@ -16,34 +16,25 @@ import android.util.Log;
 import android.view.View;
 
 import com.opendashcam.models.Recording;
+import com.opendashcam.models.RecordingsManager;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Activity to view video recordings produced by this dash cam application
  * Displays all videos from paths matching %OpenDashCam%
  */
 
-public class ViewRecordingsActivity extends AppCompatActivity {
-
-    //set constants for MediaStore to query, and show videos
-    private final static Uri MEDIA_EXTERNAL_CONTENT_URI = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-    private final static String _ID = MediaStore.Video.Media._ID;
-    private final static String MEDIA_DATA = MediaStore.Video.Media.DATA;
-    private final static String ORDER_BY = MediaStore.Video.Media._ID + " DESC";
+public class ViewRecordingsActivity extends AppCompatActivity implements ViewRecordingsRecyclerViewAdapter.RecordingClickListener,
+        RecordingsManager.OnRecordingsListener {
 
 
     private RecyclerView recyclerView;
-    private RecyclerView.Adapter adapter;
+    private ViewRecordingsRecyclerViewAdapter adapter;
     private RecyclerView.LayoutManager layoutManager;
     private static String LOG_TAG = "CardViewActivity";
-
-    private Cursor cursor;
-    private int columnIndex;
-    private int columnMetaIndex;
-    private Uri contentUri;
-    ArrayList<Recording> recordings;
 
     private Context context;
     private BroadcastReceiver mReceiver;
@@ -59,33 +50,14 @@ public class ViewRecordingsActivity extends AppCompatActivity {
         context = getApplicationContext();
         setContentView(R.layout.activity_view_recordings);
 
-        // set path
-        contentUri = MEDIA_EXTERNAL_CONTENT_URI;
-
         // set RecyclerView for gallery
         recyclerView = (RecyclerView) findViewById(R.id.my_recycler_view);
         recyclerView.setHasFixedSize(true);
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
-        recordings = getDataSet();
-        adapter = new ViewRecordingsRecyclerViewAdapter(context, recordings);
+        adapter = new ViewRecordingsRecyclerViewAdapter(context);
+        adapter.setOnItemClickListener(this);
         recyclerView.setAdapter(adapter);
-
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        LocalBroadcastManager.getInstance(context).unregisterReceiver(mReceiver);
-        mReceiver = null;
-    }
-
-    /**
-     * Adds onClick listener to play the recording
-     */
-    @Override
-    protected void onResume() {
-        super.onResume();
         mReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -101,59 +73,54 @@ public class ViewRecordingsActivity extends AppCompatActivity {
                 });
             }
         };
-        LocalBroadcastManager.getInstance(context).registerReceiver(mReceiver, new IntentFilter(Recording.ACTION_DATA_LOADED));
-        ((ViewRecordingsRecyclerViewAdapter) adapter).setOnItemClickListener(new ViewRecordingsRecyclerViewAdapter.RecordingClickListener() {
-            @Override
-            public void onItemClick(int position, View v) {
-                Log.i(LOG_TAG, " Clicked on Item " + position);
+    }
 
-                // Play recording on position
-                Util.showToast(context, recordings.get(position).getDateSaved() +
-                        " - " +
-                        recordings.get(position).getTimeSaved());
-                Util.openFile(context, Uri.fromFile(new File(recordings.get(position).getFilePath())), "video/mp4");
-            }
-        });
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(mReceiver);
+        RecordingsManager.sharedInstance().removeOnRecordingsListener(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mReceiver = null;
     }
 
     /**
-     * Populates array with Recording objects
-     *
-     * @return ArrayList<Recording>
+     * Adds onClick listener to play the recording
      */
-    private ArrayList<Recording> getDataSet() {
-        ArrayList results = new ArrayList<Recording>();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LocalBroadcastManager.getInstance(context).registerReceiver(mReceiver, new IntentFilter(Recording.ACTION_DATA_LOADED));
+        adapter.updateRecordings(RecordingsManager.sharedInstance().getRecordings());
+        RecordingsManager.sharedInstance().addOnRecordingsListener(this);
+        updateEmptyView();
+    }
 
-        //Here we set up a string array of the thumbnail ID column we want to get back
-        String[] columns = {_ID, MEDIA_DATA};
-        // Now we create the cursor pointing to the external thumbnail store
-        cursor = managedQuery(contentUri,
-                columns, // Which columns to return
-                MEDIA_DATA + " like ? ",       // WHERE clause; which rows to return (all rows)
-                new String[]{"%OpenDashCam%"},       // WHERE clause selection arguments (none)
-                ORDER_BY); // Order-by clause (descending by date added)
-        int count = cursor.getCount();
-        // We now get the column index of the thumbnail id
-        columnIndex = cursor.getColumnIndex(_ID);
-        // Meta data
-        columnMetaIndex = cursor.getColumnIndex(MEDIA_DATA);
-        //move position to first element
-        cursor.moveToFirst();
+    @Override
+    public void onItemClick(int position, View v) {
+        Log.i(LOG_TAG, " Clicked on Item " + position);
 
-        for (int i = 0; i < count; i++) {
-            // Get id
-            int id = cursor.getInt(columnIndex);
+        Recording recording = adapter.getItem(position);
+        // Play recording on position
+        Util.showToast(context, recording.getDateSaved() + " - " + recording.getTimeSaved());
+        Util.openFile(context, Uri.fromFile(new File(recording.getFilePath())), "video/mp4");
+    }
 
-            // Get filePath
-            String filePath = cursor.getString(columnMetaIndex);
+    @Override
+    public void onRecordingsLoaded(List<Recording> recordings) {
+        adapter.updateRecordings(RecordingsManager.sharedInstance().getRecordings());
+        updateEmptyView();
+    }
 
-            // Add recording object to the arraylist
-            Recording recording = new Recording(context, id, filePath, true);
-            results.add(i, recording);
-
-            cursor.moveToNext();
+    private void updateEmptyView() {
+        if (adapter.getItemCount() == 0) {
+            findViewById(R.id.emptyview).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.emptyview).setVisibility(View.GONE);
         }
-
-        return results;
     }
 }
